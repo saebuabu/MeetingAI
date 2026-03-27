@@ -220,6 +220,11 @@ def main():
             raw = samples.tobytes()
         final_data = resample_chunk(raw, sys_rate, SAMPLE_RATE)
 
+    if not final_data:
+        print("[!] Geen audio opgenomen. Bestand niet opgeslagen.")
+        pa.terminate()
+        sys.exit(1)
+
     # Schrijf WAV
     with wave.open(str(output_path), "wb") as wf:
         wf.setnchannels(CHANNELS)
