@@ -51,8 +51,8 @@ ffmpeg -version
 conda create -n meetingai python=3.11
 conda activate meetingai
 
-# PyTorch met CUDA (pas cu121 aan naar jouw CUDA versie indien nodig)
-pip install torch --index-url https://download.pytorch.org/whl/cu121
+# PyTorch met CUDA (pas cu124 aan naar jouw CUDA versie indien nodig)
+pip install torch --index-url https://download.pytorch.org/whl/cu124
 
 # Overige dependencies
 pip install pyaudiowpatch openai-whisper numpy requests
