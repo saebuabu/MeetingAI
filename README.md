@@ -12,10 +12,32 @@ Opnemen → transcriberen → notulen genereren, alles op eigen hardware.
 - NVIDIA GPU met CUDA (bijv. RTX 5080)
 - Miniconda
 - Ollama actief op poort 11434 met `deepseek-r1:14b`
+- ffmpeg (zie installatie hieronder)
 
 ---
 
 ## Installatie
+
+### 1. Repo clonen
+
+```bash
+git clone https://github.com/saebuabu/MeetingAI.git
+cd MeetingAI
+```
+
+### 2. ffmpeg installeren
+
+Whisper vereist ffmpeg. Download de Windows build via:
+https://github.com/BtbN/FFmpeg-Builds/releases
+
+Kies `ffmpeg-master-latest-win64-gpl.zip`, pak uit en voeg de `bin`-map toe aan je PATH.
+
+Controleer daarna:
+```bash
+ffmpeg -version
+```
+
+### 3. Python omgeving aanmaken
 
 ```bash
 conda create -n meetingai python=3.11
@@ -35,6 +57,8 @@ pip install pyaudiowpatch openai-whisper numpy requests
 ### Alles in één keer
 
 ```bash
+conda activate meetingai
+cd MeetingAI
 python vergadering.py
 ```
 
