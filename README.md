@@ -25,7 +25,15 @@ git clone https://github.com/saebuabu/MeetingAI.git
 cd MeetingAI
 ```
 
-### 2. ffmpeg installeren
+### 2. Miniconda installeren
+
+Download Miniconda (Windows 64-bit installer) via:
+https://docs.conda.io/en/latest/miniconda.html
+
+Kies de Python 3.11 installer. Na installatie is conda beschikbaar in de **Anaconda Prompt**.
+pip is automatisch beschikbaar binnen elke conda environment.
+
+### 3. ffmpeg installeren
 
 Whisper vereist ffmpeg. Download de Windows build via:
 https://github.com/BtbN/FFmpeg-Builds/releases
@@ -37,7 +45,7 @@ Controleer daarna:
 ffmpeg -version
 ```
 
-### 3. Python omgeving aanmaken
+### 4. Python omgeving aanmaken
 
 ```bash
 conda create -n meetingai python=3.11
