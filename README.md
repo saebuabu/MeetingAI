@@ -47,6 +47,8 @@ ffmpeg -version
 
 ### 4. Python omgeving aanmaken
 
+Open de **Anaconda Prompt** (niet de gewone Command Prompt of PowerShell).
+
 ```bash
 conda create -n meetingai python=3.11
 conda activate meetingai
@@ -57,6 +59,17 @@ pip install torch --index-url https://download.pytorch.org/whl/cu124
 # Overige dependencies
 pip install pyaudiowpatch openai-whisper numpy requests
 ```
+
+### 5. Installatie controleren
+
+Voer dit uit om te bevestigen dat alles correct is geïnstalleerd:
+
+```bash
+conda activate meetingai
+python -c "import numpy, whisper, pyaudiowpatch, requests; print('Alle packages OK')"
+```
+
+Je moet `Alle packages OK` zien. Zie je in plaats daarvan een `ModuleNotFoundError`, voer dan stap 4 opnieuw uit.
 
 ---
 
@@ -120,6 +133,31 @@ python vergadering.py --input mijn_opname.wav
 | `vergadering_YYYYMMDD_HHMM.txt` | Volledig transcript |
 | `vergadering_YYYYMMDD_HHMM_tijdstempels.txt` | Transcript met tijdstempels per segment |
 | `vergadering_YYYYMMDD_HHMM_notulen.md` | Gestructureerde notulen (Markdown) |
+
+---
+
+## Problemen oplossen
+
+### `ModuleNotFoundError: No module named 'numpy'` (of andere packages)
+
+Dit betekent dat Python de conda omgeving **meetingai** niet gebruikt. Controleer:
+
+1. **Gebruik Anaconda Prompt**, niet de gewone Command Prompt of PowerShell.
+2. Activeer de omgeving vóór elk gebruik:
+   ```bash
+   conda activate meetingai
+   ```
+   De prompt moet veranderen naar `(meetingai) C:\...`
+3. Controleer of je in de juiste omgeving bent:
+   ```bash
+   where python
+   ```
+   Het pad moet `...\envs\meetingai\python.exe` bevatten, niet `C:\Python312\python.exe`.
+4. Als packages nog steeds ontbreken, installeer ze opnieuw binnen de omgeving:
+   ```bash
+   conda activate meetingai
+   pip install pyaudiowpatch openai-whisper numpy requests
+   ```
 
 ---
 
