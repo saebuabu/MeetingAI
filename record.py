@@ -46,7 +46,7 @@ def get_default_mic(pa):
 
 def resample_chunk(data, src_rate, dst_rate):
     """Eenvoudige lineaire resampling naar dst_rate."""
-    if src_rate == dst_rate:
+    if not data or src_rate == dst_rate:
         return data
     samples = np.frombuffer(data, dtype=np.int16).astype(np.float32)
     ratio = dst_rate / src_rate
