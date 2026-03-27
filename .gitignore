@@ -1,0 +1,21 @@
+# Audio en transcriptiebestanden (kunnen groot zijn)
+*.wav
+*.mp3
+*.mp4
+*.m4a
+*.txt
+*.md
+!README.md
+!requirements.txt
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.env
+venv/
+.conda/
+
+# IDE
+.vscode/
+.idea/
