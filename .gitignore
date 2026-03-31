@@ -1,3 +1,6 @@
+# Sessie-uitvoer
+output/
+
 # Audio en transcriptiebestanden (kunnen groot zijn)
 *.wav
 *.mp3

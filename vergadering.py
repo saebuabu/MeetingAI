@@ -85,22 +85,27 @@ Voorbeelden:
             print(f"[!] Invoerbestand niet gevonden: {wav_pad}")
             sys.exit(1)
         print(f"\n[*] Bestaand bestand gebruiken: {wav_pad}")
-        # Gebruik de basis_naam van het invoerbestand
         basis_naam = wav_pad.stem
     else:
         stap_banner(1, "Vergadering opnemen")
-        wav_pad = Path(f"{basis_naam}.wav")
+        session_dir = Path("output") / basis_naam
+        session_dir.mkdir(parents=True, exist_ok=True)
+        wav_pad = session_dir / f"{basis_naam}.wav"
         code = run_script("record.py", ["--output", str(wav_pad)])
         if code != 0:
             print("[!] Opname mislukt.")
             sys.exit(code)
 
+    # Sessiemap voor output (ook bij --input)
+    session_dir = Path("output") / basis_naam
+    session_dir.mkdir(parents=True, exist_ok=True)
+
     # --- Stap 2: Transcriptie ---
     stap_banner(2, "Transcriberen met Whisper")
-    txt_pad = wav_pad.with_suffix(".txt")
+    txt_pad = session_dir / f"{basis_naam}.txt"
     code = run_script(
         "transcribe.py",
-        [str(wav_pad), "--model", args.model, "--taal", args.taal],
+        [str(wav_pad), "--model", args.model, "--taal", args.taal, "--output", str(txt_pad)],
     )
     if code != 0:
         print("[!] Transcriptie mislukt.")
@@ -113,7 +118,7 @@ Voorbeelden:
     # --- Stap 3: Notulen ---
     if not args.skip_notulen:
         stap_banner(3, "Notulen genereren via Ollama")
-        notulen_pad = txt_pad.with_name(txt_pad.stem + "_notulen.md")
+        notulen_pad = session_dir / f"{basis_naam}_notulen.md"
         code = run_script(
             "notulen.py",
             [str(txt_pad), "--model", args.ollama, "--output", str(notulen_pad)],
@@ -129,6 +134,7 @@ Voorbeelden:
     print("\n" + "="*50)
     print("  Klaar! Bestanden:")
     print("="*50)
+    print(f"  Sessiemap:  {session_dir}")
     print(f"  Audio:      {wav_pad}")
     print(f"  Transcript: {txt_pad}")
     if notulen_pad:
