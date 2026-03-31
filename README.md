@@ -159,6 +159,19 @@ Dit betekent dat Python de conda omgeving **meetingai** niet gebruikt. Controlee
    pip install pyaudiowpatch openai-whisper numpy requests
    ```
 
+### PyTorch incompatibel met GPU (sm_86 / RTX 3080 of nieuwer)
+
+Als je deze melding ziet tijdens transcriptie:
+> NVIDIA GeForce RTX 3080 with CUDA capability sm_86 is not compatible with the current PyTorch installation.
+
+Installeer PyTorch opnieuw met CUDA 12.4 support:
+
+```bash
+conda activate meetingai
+pip uninstall torch torchvision torchaudio -y
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+```
+
 ---
 
 ## Whisper modellen
