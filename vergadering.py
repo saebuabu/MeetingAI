@@ -25,8 +25,12 @@ def stap_banner(nr: int, titel: str):
 def run_script(script: str, args: list[str]) -> int:
     """Voer een ander script uit als subprocess."""
     cmd = [sys.executable, script] + args
-    result = subprocess.run(cmd)
-    return result.returncode
+    try:
+        result = subprocess.run(cmd)
+        return result.returncode
+    except KeyboardInterrupt:
+        print("\n[!] Gestopt door gebruiker.")
+        sys.exit(0)
 
 
 def main():
