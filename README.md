@@ -53,8 +53,11 @@ Open de **Anaconda Prompt** (niet de gewone Command Prompt of PowerShell).
 conda create -n meetingai python=3.11
 conda activate meetingai
 
-# PyTorch met CUDA (pas cu124 aan naar jouw CUDA versie indien nodig)
-pip install torch --index-url https://download.pytorch.org/whl/cu124
+# PyTorch met CUDA
+# RTX 5000-serie (Blackwell, sm_120): gebruik cu128
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+# RTX 3000/4000-serie: gebruik cu124
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
 
 # Overige dependencies
 pip install pyaudiowpatch openai-whisper numpy requests
@@ -159,13 +162,18 @@ Dit betekent dat Python de conda omgeving **meetingai** niet gebruikt. Controlee
    pip install pyaudiowpatch openai-whisper numpy requests
    ```
 
-### PyTorch incompatibel met GPU (sm_86 / RTX 3080 of nieuwer)
+### PyTorch incompatibel met GPU
 
-Als je deze melding ziet tijdens transcriptie:
-> NVIDIA GeForce RTX 3080 with CUDA capability sm_86 is not compatible with the current PyTorch installation.
+Als je een melding ziet dat je GPU (sm_86, sm_120, etc.) niet compatibel is met de huidige PyTorch installatie, installeer dan de juiste versie op basis van je GPU:
 
-Installeer PyTorch opnieuw met CUDA 12.4 support:
+**RTX 5000-serie (Blackwell, sm_120) — gebruik cu128:**
+```bash
+conda activate meetingai
+pip uninstall torch torchvision torchaudio -y
+pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu128
+```
 
+**RTX 3000/4000-serie (sm_86/sm_89) — gebruik cu124:**
 ```bash
 conda activate meetingai
 pip uninstall torch torchvision torchaudio -y
