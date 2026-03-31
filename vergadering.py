@@ -3,6 +3,7 @@ vergadering.py — Volledige vergaderpipeline in één commando
 
 Gebruik:
     python vergadering.py                        # Opnemen + transcriberen + notulen
+    python vergadering.py --live                 # Realtime transcriptie tijdens opname
     python vergadering.py --input bestand.wav    # Sla opname over
     python vergadering.py --model medium         # Kies Whisper model
     python vergadering.py --skip-notulen         # Alleen opname + transcriptie
@@ -69,6 +70,11 @@ Voorbeelden:
         action="store_true",
         help="Sla notulengeneratie over",
     )
+    parser.add_argument(
+        "--live",
+        action="store_true",
+        help="Realtime transcriptie tijdens opname (vervangt stap 1+2, geen WAV opgeslagen)",
+    )
     args = parser.parse_args()
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
@@ -78,41 +84,57 @@ Voorbeelden:
     print("  MeetingAI — Lokale vergaderingsassistent")
     print("="*50)
 
-    # --- Stap 1: Opname ---
-    if args.input:
-        wav_pad = Path(args.input)
-        if not wav_pad.exists():
-            print(f"[!] Invoerbestand niet gevonden: {wav_pad}")
-            sys.exit(1)
-        print(f"\n[*] Bestaand bestand gebruiken: {wav_pad}")
-        basis_naam = wav_pad.stem
-    else:
-        stap_banner(1, "Vergadering opnemen")
+    wav_pad = None
+
+    if args.live and not args.input:
+        # --- Live modus: opname + realtime transcriptie in één stap ---
+        stap_banner(1, "Live opnemen + realtime transcriberen")
         session_dir = Path("output") / basis_naam
         session_dir.mkdir(parents=True, exist_ok=True)
-        wav_pad = session_dir / f"{basis_naam}.wav"
-        code = run_script("record.py", ["--output", str(wav_pad)])
+        txt_pad = session_dir / f"{basis_naam}.txt"
+        code = run_script(
+            "live_transcribe.py",
+            ["--output", str(txt_pad), "--model", args.model, "--taal", args.taal],
+        )
         if code != 0:
-            print("[!] Opname mislukt.")
+            print("[!] Live transcriptie mislukt.")
+            sys.exit(code)
+    else:
+        # --- Stap 1: Opname ---
+        if args.input:
+            wav_pad = Path(args.input)
+            if not wav_pad.exists():
+                print(f"[!] Invoerbestand niet gevonden: {wav_pad}")
+                sys.exit(1)
+            print(f"\n[*] Bestaand bestand gebruiken: {wav_pad}")
+            basis_naam = wav_pad.stem
+        else:
+            stap_banner(1, "Vergadering opnemen")
+            session_dir = Path("output") / basis_naam
+            session_dir.mkdir(parents=True, exist_ok=True)
+            wav_pad = session_dir / f"{basis_naam}.wav"
+            code = run_script("record.py", ["--output", str(wav_pad)])
+            if code != 0:
+                print("[!] Opname mislukt.")
+                sys.exit(code)
+
+        # Sessiemap voor output (ook bij --input)
+        session_dir = Path("output") / basis_naam
+        session_dir.mkdir(parents=True, exist_ok=True)
+
+        # --- Stap 2: Transcriptie ---
+        stap_banner(2, "Transcriberen met Whisper")
+        txt_pad = session_dir / f"{basis_naam}.txt"
+        code = run_script(
+            "transcribe.py",
+            [str(wav_pad), "--model", args.model, "--taal", args.taal, "--output", str(txt_pad)],
+        )
+        if code != 0:
+            print("[!] Transcriptie mislukt.")
             sys.exit(code)
 
-    # Sessiemap voor output (ook bij --input)
-    session_dir = Path("output") / basis_naam
-    session_dir.mkdir(parents=True, exist_ok=True)
-
-    # --- Stap 2: Transcriptie ---
-    stap_banner(2, "Transcriberen met Whisper")
-    txt_pad = session_dir / f"{basis_naam}.txt"
-    code = run_script(
-        "transcribe.py",
-        [str(wav_pad), "--model", args.model, "--taal", args.taal, "--output", str(txt_pad)],
-    )
-    if code != 0:
-        print("[!] Transcriptie mislukt.")
-        sys.exit(code)
-
     if not txt_pad.exists():
-        print(f"[!] Transcript niet gevonden na transcriptie: {txt_pad}")
+        print(f"[!] Transcript niet gevonden: {txt_pad}")
         sys.exit(1)
 
     # --- Stap 3: Notulen ---
@@ -135,7 +157,8 @@ Voorbeelden:
     print("  Klaar! Bestanden:")
     print("="*50)
     print(f"  Sessiemap:  {session_dir}")
-    print(f"  Audio:      {wav_pad}")
+    if wav_pad:
+        print(f"  Audio:      {wav_pad}")
     print(f"  Transcript: {txt_pad}")
     if notulen_pad:
         print(f"  Notulen:    {notulen_pad}")
