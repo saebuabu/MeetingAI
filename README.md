@@ -16,6 +16,53 @@ Opnemen → transcriberen → notulen genereren, alles op eigen hardware.
 
 ---
 
+## Hoe audio-opname werkt
+
+De scripts combineren twee opnamebronnen tegelijk:
+
+| Bron | Wat wordt opgenomen | Hoe |
+|---|---|---|
+| **Microfoon** | Jijzelf (en anderen in de ruimte) | USB-microfoon aangesloten op de desktop |
+| **WASAPI Loopback** | Remote deelnemers (Teams, etc.) | Windows systeem audio — wat je hoort in je headset/speakers |
+
+Beide bronnen worden automatisch gemixt tot één audiokanaal dat Whisper transcribeert.
+
+### WASAPI Loopback uitgelegd
+
+WASAPI Loopback is een Windows-functie die het geluid onderschept dat Windows naar je speakers of headset stuurt — een perfecte digitale kopie, zonder echo of verlies van kwaliteit.
+
+```
+Teams (remote deelnemers) → Windows audio → headset/speakers
+                                  ↓
+                           WASAPI Loopback → live_transcribe.py → Whisper
+```
+
+**Belangrijk:** de scripts moeten draaien op **dezelfde machine als waar Teams openstaat**. Dat is de desktop (met de GPU). Er hoeft geen extra AI-deelnemer in de Teams-vergadering te zitten — WASAPI Loopback werkt puur lokaal op de achtergrond.
+
+`pyaudiowpatch` (al opgenomen in de installatie) voegt WASAPI Loopback-ondersteuning toe aan Windows. De standaard PyAudio ondersteunt dit niet.
+
+---
+
+## Hardware — Microfoon
+
+De scripts ondersteunen twee opnamebronnen tegelijk:
+- **Microfoon** — pikt lokale sprekers op
+- **Systeem audio (WASAPI loopback)** — pikt remote deelnemers op (bijv. via Teams)
+
+Elke USB-microfoon die Windows herkent als standaard audio input werkt. Bluetooth en 3.5mm jack worden afgeraden (dropouts respectievelijk afhankelijk van geluidskaartkwaliteit).
+
+### Aanbevolen hardware
+
+| Scenario | Apparaat | Prijs |
+|---|---|---|
+| Kleine vergadering (2–4 personen) of Teams | **Jabra Speak 510 USB** | ~€100 |
+| Alleen jijzelf / headset | **Jabra Evolve2 30 USB** of vergelijkbaar | ~€60–80 |
+| Grotere vergaderruimte (5+ personen) | **Jabra Speak 750 USB** of **Epos Expand 20** | ~€180–220 |
+
+De **Jabra Speak 510 USB** is de meest veelzijdige keuze: omnidirectioneel (360°), werkt als microfoon én luidspreker, en is geschikt voor zowel fysieke als online vergaderingen.
+
+---
+
 ## Installatie
 
 ### 1. Repo clonen
@@ -161,6 +208,25 @@ Dit betekent dat Python de conda omgeving **meetingai** niet gebruikt. Controlee
    conda activate meetingai
    pip install pyaudiowpatch openai-whisper numpy requests
    ```
+
+### ffmpeg fout: `swscale-9.dll is niet geschikt voor Windows` (foutcode 0xc0e90002)
+
+Dit betekent dat de handmatig geïnstalleerde ffmpeg beschadigd of incompatibel is. De snelste oplossing is ffmpeg via conda te installeren:
+
+```bash
+conda activate meetingai
+conda install -c conda-forge ffmpeg
+```
+
+Conda installeert dan automatisch de juiste versie en voegt ffmpeg toe aan het PATH van de omgeving — geen handmatige stappen nodig. Controleer daarna:
+
+```bash
+ffmpeg -version
+```
+
+Als je toch de handmatige installatie wilt herstellen: verwijder `C:\ffmpeg\ffmpeg-master\` en download een nieuwe build via https://www.gyan.dev/ffmpeg/builds/ (`ffmpeg-release-essentials.zip`). Pak uit naar `C:\ffmpeg\` en zorg dat `C:\ffmpeg\bin` in je systeem-PATH staat.
+
+---
 
 ### PyTorch incompatibel met GPU
 
