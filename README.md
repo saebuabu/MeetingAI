@@ -230,23 +230,22 @@ Als je toch de handmatige installatie wilt herstellen: verwijder `C:\ffmpeg\ffmp
 
 ### ffmpeg fout: `libintl_bind_textdomain_codeset niet gevonden in gdk_pixbuf-2.0-0.dll`
 
-Dit treedt op na `conda install -c conda-forge ffmpeg` als de `gdk_pixbuf` DLL in de conda-omgeving corrupt of incompatibel is.
+Dit treedt op als de conda-omgeving een kapotte ffmpeg-versie bevat. Conda zet zijn eigen `bin` map altijd vóór het systeem-PATH, waardoor de kapotte versie gebruikt blijft worden ook al staat er een goede versie elders.
 
-**Optie 1 — fix de DLL (probeer dit eerst):**
-```bash
-conda activate meetingai
-conda install -c conda-forge gdk-pixbuf --force-reinstall
-ffmpeg -version
-```
+**Oplossing — statische ffmpeg installeren en conda-versie verwijderen:**
 
-**Optie 2 — schone statische ffmpeg binary (als optie 1 niet werkt):**
-
-Download `ffmpeg-release-essentials.zip` via https://www.gyan.dev/ffmpeg/builds/ — dit is een statische build zonder externe DLL-afhankelijkheden.
-
-1. Pak uit naar `C:\tools\ffmpeg\`
-2. Voeg `C:\tools\ffmpeg\bin` toe aan het systeem-PATH (via Omgevingsvariabelen)
-3. Open een nieuwe Anaconda Prompt en controleer:
+1. Download `ffmpeg-release-essentials.zip` via https://www.gyan.dev/ffmpeg/builds/
+2. Pak uit naar `C:\tools\ffmpeg\`
+3. Voeg `C:\tools\ffmpeg\bin` toe aan het systeem-PATH (via Omgevingsvariabelen)
+4. Verwijder ffmpeg uit de conda-omgeving:
    ```bash
+   conda activate meetingai
+   conda remove ffmpeg
+   ```
+5. Herstart de computer
+6. Controleer in een nieuwe Anaconda Prompt:
+   ```bash
+   conda activate meetingai
    ffmpeg -version
    ```
 
