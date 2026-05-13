@@ -71,13 +71,20 @@ def resample_chunk(data, src_rate, dst_rate):
 def register_speakers(pa, mic_idx, mic_info):
     """Registreer deelnemers door ~5 seconden stem op te nemen en embeddings op te slaan."""
     try:
-        from resemblyzer import VoiceEncoder, preprocess_wav
+        import torch
+        from speechbrain.inference.speaker import EncoderClassifier
     except ImportError:
-        print("[!] resemblyzer niet gevonden. Installeer met: pip install resemblyzer")
+        print("[!] speechbrain niet gevonden. Installeer met: pip install speechbrain")
         sys.exit(1)
 
-    encoder = VoiceEncoder()
-    print("\n[*] Sprekerregistratie")
+    print("\n[*] Sprekermodel laden (eenmalig downloaden ~80MB)...")
+    encoder = EncoderClassifier.from_hparams(
+        source="speechbrain/spkrec-ecapa-voxceleb",
+        savedir="pretrained_models/spkrec-ecapa-voxceleb",
+        run_opts={"device": "cuda" if torch.cuda.is_available() else "cpu"},
+    )
+    print("[+] Model geladen.\n")
+    print("[*] Sprekerregistratie")
     print("[*] Elke deelnemer spreekt ~5 seconden (bijv. naam + een korte zin)\n")
 
     n = 0
@@ -113,13 +120,15 @@ def register_speakers(pa, mic_idx, mic_info):
         if mic_rate != SAMPLE_RATE:
             raw = resample_chunk(raw, mic_rate, SAMPLE_RATE)
         audio_np = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
-        wav = preprocess_wav(audio_np, source_sr=SAMPLE_RATE)
-        embed = encoder.embed_utterance(wav)
+        audio_tensor = torch.tensor(audio_np).unsqueeze(0)
+        with torch.no_grad():
+            embed = encoder.encode_batch(audio_tensor).squeeze().cpu().numpy()
+        embed = embed / (np.linalg.norm(embed) + 1e-9)
         speaker_profiles[name] = embed
         print(f"[+] {name} geregistreerd.\n")
 
     print(f"[+] {len(speaker_profiles)} deelnemer(s) geregistreerd. Remote sprekers worden als 'Remote' gelabeld.\n")
-    return encoder, speaker_profiles, preprocess_wav
+    return encoder, speaker_profiles
 
 
 def identify_speaker(embed, speaker_profiles, threshold=0.75):
@@ -250,7 +259,7 @@ def main():
         if mic_idx is None:
             print("[!] --wie vereist een microfoon. Sprekerherkenning uitgeschakeld.")
         else:
-            encoder, speaker_profiles, preprocess_wav = register_speakers(pa, mic_idx, mic_info)
+            encoder, speaker_profiles = register_speakers(pa, mic_idx, mic_info)
 
     print(f"\n[*] Live transcriptie gestart — Ctrl+C om te stoppen")
     print(f"[*] Uitvoer: {txt_pad}")
@@ -404,9 +413,12 @@ def main():
                     # Minimaal 0.5 seconde audio nodig voor betrouwbare embedding
                     if len(seg_audio) >= SAMPLE_RATE * bytes_per_sample // 2:
                         try:
+                            import torch
                             audio_np = np.frombuffer(seg_audio, dtype=np.int16).astype(np.float32) / 32768.0
-                            wav = preprocess_wav(audio_np, source_sr=SAMPLE_RATE)
-                            embed = encoder.embed_utterance(wav)
+                            audio_tensor = torch.tensor(audio_np).unsqueeze(0)
+                            with torch.no_grad():
+                                embed = encoder.encode_batch(audio_tensor).squeeze().cpu().numpy()
+                            embed = embed / (np.linalg.norm(embed) + 1e-9)
                             speaker = identify_speaker(embed, speaker_profiles)
                         except Exception:
                             speaker = "?"

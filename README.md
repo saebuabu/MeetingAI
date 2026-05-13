@@ -110,7 +110,7 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 pip install pyaudiowpatch openai-whisper numpy requests
 
 # Optioneel: sprekerherkenning (voor --wie flag)
-pip install resemblyzer
+pip install speechbrain
 ```
 
 ### 5. Installatie controleren
@@ -181,7 +181,7 @@ Bij het opstarten vraagt de app elke lokale deelnemer om ~5 seconden te spreken.
 [00:35] Lisa: Eerste agendapunt is het budget.
 ```
 
-Remote deelnemers (via Teams, etc.) worden automatisch als `Remote:` gelabeld. Vereist `resemblyzer` (zie installatie).
+Remote deelnemers (via Teams, etc.) worden automatisch als `Remote:` gelabeld. Vereist `speechbrain` (zie installatie). Het sprekermodel (~80MB) wordt eenmalig automatisch gedownload bij het eerste gebruik.
 
 ### Stap voor stap
 
