@@ -108,6 +108,9 @@ pip install torch torchvision torchaudio --index-url https://download.pytorch.or
 
 # Overige dependencies
 pip install pyaudiowpatch openai-whisper numpy requests
+
+# Optioneel: sprekerherkenning (voor --wie flag)
+pip install resemblyzer
 ```
 
 ### 5. Installatie controleren
@@ -158,6 +161,28 @@ Transcriptie verschijnt realtime in de terminal terwijl je opneemt, elke ~20 sec
 
 Stop met **Ctrl+C** — de resterende audio wordt nog verwerkt en alles wordt opgeslagen.
 
+### Live transcriptie met sprekerherkenning
+
+```bash
+python vergadering.py --live --wie
+```
+
+Of direct:
+
+```bash
+python live_transcribe.py --wie
+```
+
+Bij het opstarten vraagt de app elke lokale deelnemer om ~5 seconden te spreken. Daarna wordt elk getranscribeerd segment gelabeld met de naam van de spreker:
+
+```
+[00:00] Jan: Goedemiddag, we beginnen de vergadering.
+[00:22] Remote: Ik bel in vanuit Amsterdam.
+[00:35] Lisa: Eerste agendapunt is het budget.
+```
+
+Remote deelnemers (via Teams, etc.) worden automatisch als `Remote:` gelabeld. Vereist `resemblyzer` (zie installatie).
+
 ### Stap voor stap
 
 ```bash
@@ -188,6 +213,7 @@ python vergadering.py --input mijn_opname.wav
 | Script | Optie | Beschrijving |
 |---|---|---|
 | `vergadering.py` | `--live` | Realtime transcriptie in terminal tijdens opname |
+| `vergadering.py` | `--live --wie` | Sprekerherkenning inschakelen (vereist resemblyzer) |
 | `vergadering.py` | `--input bestand.wav` | Sla opname over |
 | `vergadering.py` | `--model medium` | Whisper model kiezen |
 | `vergadering.py` | `--skip-notulen` | Alleen transcriberen |
@@ -195,6 +221,7 @@ python vergadering.py --input mijn_opname.wav
 | `live_transcribe.py` | `--model medium` | Whisper model (tiny/base/small/medium/large-v3) |
 | `live_transcribe.py` | `--taal nl` | Taal voor transcriptie |
 | `live_transcribe.py` | `--save-wav` | Sla ook het ruwe audio-bestand op |
+| `live_transcribe.py` | `--wie` | Sprekerherkenning inschakelen (vereist resemblyzer) |
 | `transcribe.py` | `--model large-v3` | Whisper model (tiny/base/small/medium/large-v3) |
 | `transcribe.py` | `--taal nl` | Taal voor transcriptie |
 | `notulen.py` | `--model deepseek-r1:14b` | Ollama model voor notulen |

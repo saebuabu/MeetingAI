@@ -75,6 +75,11 @@ Voorbeelden:
         action="store_true",
         help="Realtime transcriptie tijdens opname (vervangt stap 1+2, geen WAV opgeslagen)",
     )
+    parser.add_argument(
+        "--wie",
+        action="store_true",
+        help="Sprekerherkenning inschakelen (alleen in combinatie met --live, vereist resemblyzer)",
+    )
     args = parser.parse_args()
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M")
@@ -92,10 +97,10 @@ Voorbeelden:
         session_dir = Path("output") / basis_naam
         session_dir.mkdir(parents=True, exist_ok=True)
         txt_pad = session_dir / f"{basis_naam}.txt"
-        code = run_script(
-            "live_transcribe.py",
-            ["--output", str(txt_pad), "--model", args.model, "--taal", args.taal],
-        )
+        live_args = ["--output", str(txt_pad), "--model", args.model, "--taal", args.taal]
+        if args.wie:
+            live_args.append("--wie")
+        code = run_script("live_transcribe.py", live_args)
         if code != 0:
             print("[!] Live transcriptie mislukt.")
             sys.exit(code)

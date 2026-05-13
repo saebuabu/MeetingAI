@@ -6,9 +6,10 @@ Gebruik:
     python live_transcribe.py --model medium --taal nl
     python live_transcribe.py --output output/vergadering.txt
     python live_transcribe.py --save-wav
+    python live_transcribe.py --wie          # Sprekerherkenning inschakelen
 
 Stoppen: Ctrl+C
-Vereist: pyaudiowpatch, openai-whisper, torch
+Vereist: pyaudiowpatch, openai-whisper, torch, resemblyzer (voor --wie)
 """
 
 import argparse
@@ -67,6 +68,72 @@ def resample_chunk(data, src_rate, dst_rate):
     return resampled.tobytes()
 
 
+def register_speakers(pa, mic_idx, mic_info):
+    """Registreer deelnemers door ~5 seconden stem op te nemen en embeddings op te slaan."""
+    try:
+        from resemblyzer import VoiceEncoder, preprocess_wav
+    except ImportError:
+        print("[!] resemblyzer niet gevonden. Installeer met: pip install resemblyzer")
+        sys.exit(1)
+
+    encoder = VoiceEncoder()
+    print("\n[*] Sprekerregistratie")
+    print("[*] Elke deelnemer spreekt ~5 seconden (bijv. naam + een korte zin)\n")
+
+    n = 0
+    while n < 1:
+        try:
+            n = int(input("[?] Hoeveel lokale deelnemers? "))
+        except ValueError:
+            pass
+
+    speaker_profiles = {}
+    mic_rate = int(mic_info["defaultSampleRate"])
+    record_seconds = 5
+
+    for i in range(n):
+        name = input(f"[?] Naam van deelnemer {i + 1}: ").strip() or f"Spreker{i + 1}"
+        input(f"[>] Druk Enter en spreek dan ~{record_seconds} seconden ({name})...")
+
+        frames = []
+        stream = pa.open(
+            format=FORMAT, channels=1, rate=mic_rate,
+            input=True, input_device_index=mic_idx,
+            frames_per_buffer=CHUNK,
+        )
+        print("[*] Opnemen... ", end="", flush=True)
+        for _ in range(int(mic_rate / CHUNK * record_seconds)):
+            data = stream.read(CHUNK, exception_on_overflow=False)
+            frames.append(data)
+        stream.stop_stream()
+        stream.close()
+        print("klaar.")
+
+        raw = b"".join(frames)
+        if mic_rate != SAMPLE_RATE:
+            raw = resample_chunk(raw, mic_rate, SAMPLE_RATE)
+        audio_np = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+        wav = preprocess_wav(audio_np, source_sr=SAMPLE_RATE)
+        embed = encoder.embed_utterance(wav)
+        speaker_profiles[name] = embed
+        print(f"[+] {name} geregistreerd.\n")
+
+    print(f"[+] {len(speaker_profiles)} deelnemer(s) geregistreerd. Remote sprekers worden als 'Remote' gelabeld.\n")
+    return encoder, speaker_profiles, preprocess_wav
+
+
+def identify_speaker(embed, speaker_profiles, threshold=0.75):
+    """Vergelijk embedding met geregistreerde sprekers. Geen match boven threshold → 'Remote'."""
+    best_name = "Remote"
+    best_sim = threshold
+    for name, profile_embed in speaker_profiles.items():
+        sim = float(np.dot(embed, profile_embed))
+        if sim > best_sim:
+            best_sim = sim
+            best_name = name
+    return best_name
+
+
 def mix_frames(mic_data, sys_data):
     """Mix microfoon en systeem audio (gemiddelde, clamp op int16 grenzen)."""
     mic = np.frombuffer(mic_data, dtype=np.int16).astype(np.int32)
@@ -103,6 +170,11 @@ def main():
         "--save-wav",
         action="store_true",
         help="Sla ook een WAV-bestand op na afloop",
+    )
+    parser.add_argument(
+        "--wie",
+        action="store_true",
+        help="Sprekerherkenning inschakelen (vereist resemblyzer)",
     )
     args = parser.parse_args()
 
@@ -170,6 +242,16 @@ def main():
         pa.terminate()
         sys.exit(1)
 
+    # Sprekerregistratie (optioneel)
+    encoder = None
+    speaker_profiles = {}
+    preprocess_wav = None
+    if args.wie:
+        if mic_idx is None:
+            print("[!] --wie vereist een microfoon. Sprekerherkenning uitgeschakeld.")
+        else:
+            encoder, speaker_profiles, preprocess_wav = register_speakers(pa, mic_idx, mic_info)
+
     print(f"\n[*] Live transcriptie gestart — Ctrl+C om te stoppen")
     print(f"[*] Uitvoer: {txt_pad}")
     print(f"[*] Eerste transcriptie verschijnt na ~{args.chunk_seconds}s\n")
@@ -181,7 +263,7 @@ def main():
     audio_queue = queue.Queue()
     stop_event = threading.Event()
     print_lock = threading.Lock()
-    segments_list = []       # (abs_start, abs_end, text)
+    segments_list = []       # (abs_start, abs_end, speaker, text)
     all_audio_bytes = []     # voor --save-wav
     stats = {"chunks_verwerkt": 0, "in_wachtrij": 0}
 
@@ -311,11 +393,30 @@ def main():
                     continue
 
                 last_committed_time = abs_start
-                segments_list.append((abs_start, abs_end, text))
 
+                # Sprekerherkenning op basis van segment-audio
+                speaker = ""
+                if speaker_profiles and encoder is not None:
+                    bytes_per_sample = 2
+                    seg_start_byte = int(seg["start"] * SAMPLE_RATE) * bytes_per_sample
+                    seg_end_byte = int(seg["end"] * SAMPLE_RATE) * bytes_per_sample
+                    seg_audio = chunk.audio_bytes[seg_start_byte:seg_end_byte]
+                    # Minimaal 0.5 seconde audio nodig voor betrouwbare embedding
+                    if len(seg_audio) >= SAMPLE_RATE * bytes_per_sample // 2:
+                        try:
+                            audio_np = np.frombuffer(seg_audio, dtype=np.int16).astype(np.float32) / 32768.0
+                            wav = preprocess_wav(audio_np, source_sr=SAMPLE_RATE)
+                            embed = encoder.embed_utterance(wav)
+                            speaker = identify_speaker(embed, speaker_profiles)
+                        except Exception:
+                            speaker = "?"
+
+                segments_list.append((abs_start, abs_end, speaker, text))
+
+                label = f"{speaker}: " if speaker else ""
                 mins, secs = divmod(int(abs_start), 60)
                 with print_lock:
-                    print(f"\n[{mins:02d}:{secs:02d}] {text}", flush=True)
+                    print(f"\n[{mins:02d}:{secs:02d}] {label}{text}", flush=True)
 
             stats["chunks_verwerkt"] += 1
             audio_queue.task_done()
@@ -388,15 +489,17 @@ def main():
     segments_list.sort(key=lambda x: x[0])
 
     with open(txt_pad, "w", encoding="utf-8") as f:
-        for _, _, text in segments_list:
-            f.write(text + "\n")
+        for _, _, speaker, text in segments_list:
+            label = f"{speaker}: " if speaker else ""
+            f.write(f"{label}{text}\n")
     print(f"[+] Transcript opgeslagen: {txt_pad}")
 
     with open(tijdstempel_pad, "w", encoding="utf-8") as f:
-        for abs_start, abs_end, text in segments_list:
+        for abs_start, abs_end, speaker, text in segments_list:
             mins_s, secs_s = divmod(int(abs_start), 60)
             mins_e, secs_e = divmod(int(abs_end), 60)
-            f.write(f"[{mins_s:02d}:{secs_s:02d} → {mins_e:02d}:{secs_e:02d}] {text}\n")
+            label = f"{speaker}: " if speaker else ""
+            f.write(f"[{mins_s:02d}:{secs_s:02d} → {mins_e:02d}:{secs_e:02d}] {label}{text}\n")
     print(f"[+] Tijdstempels opgeslagen: {tijdstempel_pad}")
 
     if args.save_wav:
