@@ -135,6 +135,29 @@ python vergadering.py
 
 Start opname → Druk Ctrl+C om te stoppen → Whisper transcribeert → Ollama genereert notulen.
 
+### Live transcriptie (realtime in terminal)
+
+```bash
+conda activate meetingai
+cd MeetingAI
+python vergadering.py --live
+```
+
+Of direct via `live_transcribe.py`:
+
+```bash
+python live_transcribe.py
+```
+
+Transcriptie verschijnt realtime in de terminal terwijl je opneemt, elke ~20 seconden:
+
+```
+[00:00] Goedemiddag, we beginnen de vergadering.
+[00:22] Eerste agendapunt is het budget...
+```
+
+Stop met **Ctrl+C** — de resterende audio wordt nog verwerkt en alles wordt opgeslagen.
+
 ### Stap voor stap
 
 ```bash
@@ -164,10 +187,14 @@ python vergadering.py --input mijn_opname.wav
 
 | Script | Optie | Beschrijving |
 |---|---|---|
+| `vergadering.py` | `--live` | Realtime transcriptie in terminal tijdens opname |
 | `vergadering.py` | `--input bestand.wav` | Sla opname over |
 | `vergadering.py` | `--model medium` | Whisper model kiezen |
 | `vergadering.py` | `--skip-notulen` | Alleen transcriberen |
 | `vergadering.py` | `--ollama deepseek-r1:14b` | Ollama model kiezen |
+| `live_transcribe.py` | `--model medium` | Whisper model (tiny/base/small/medium/large-v3) |
+| `live_transcribe.py` | `--taal nl` | Taal voor transcriptie |
+| `live_transcribe.py` | `--save-wav` | Sla ook het ruwe audio-bestand op |
 | `transcribe.py` | `--model large-v3` | Whisper model (tiny/base/small/medium/large-v3) |
 | `transcribe.py` | `--taal nl` | Taal voor transcriptie |
 | `notulen.py` | `--model deepseek-r1:14b` | Ollama model voor notulen |
