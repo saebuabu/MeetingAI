@@ -71,34 +71,27 @@ def resample_chunk(data, src_rate, dst_rate):
 def register_speakers(pa, mic_idx, mic_info):
     """Registreer deelnemers door ~5 seconden stem op te nemen en embeddings op te slaan."""
     try:
+        import shutil
         import torch
+        import speechbrain.utils.fetching as _sb_fetch
         from speechbrain.inference.speaker import EncoderClassifier
     except ImportError:
         print("[!] speechbrain niet gevonden. Installeer met: pip install speechbrain")
         sys.exit(1)
 
+    # Overschrijf SpeechBrain symlink-aanmaak met shutil.copy2 (Windows vereist admin voor symlinks)
+    def _link_via_copy(src, dst, strategy):
+        from pathlib import Path
+        dst = Path(dst)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if not dst.exists():
+            shutil.copy2(str(src), str(dst))
+    _sb_fetch.link_with_strategy = _link_via_copy
+
     print("\n[*] Sprekermodel laden (eenmalig downloaden ~80MB)...")
-    import shutil
-    from pathlib import Path
-    savedir = "pretrained_models/spkrec-ecapa-voxceleb"
-    savedir_path = Path(savedir)
-    hyperparams = savedir_path / "hyperparams.yaml"
-    if not hyperparams.exists() or hyperparams.is_symlink():
-        from huggingface_hub import snapshot_download
-        snapshot_download(
-            repo_id="speechbrain/spkrec-ecapa-voxceleb",
-            local_dir=savedir,
-        )
-    # Vervang symlinks door echte bestanden (Windows symlinks vereisen admin-rechten)
-    for f in savedir_path.rglob("*"):
-        if f.is_symlink():
-            target = f.resolve()
-            if target.is_file():
-                f.unlink()
-                shutil.copy2(str(target), str(f))
     encoder = EncoderClassifier.from_hparams(
         source="speechbrain/spkrec-ecapa-voxceleb",
-        savedir=savedir,
+        savedir="pretrained_models/spkrec-ecapa-voxceleb",
         run_opts={"device": "cuda" if torch.cuda.is_available() else "cpu"},
     )
     print("[+] Model geladen.\n")
