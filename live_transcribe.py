@@ -78,15 +78,24 @@ def register_speakers(pa, mic_idx, mic_info):
         sys.exit(1)
 
     print("\n[*] Sprekermodel laden (eenmalig downloaden ~80MB)...")
+    import shutil
+    from pathlib import Path
     savedir = "pretrained_models/spkrec-ecapa-voxceleb"
-    import os
-    if not os.path.exists(os.path.join(savedir, "hyperparams.yaml")):
+    savedir_path = Path(savedir)
+    hyperparams = savedir_path / "hyperparams.yaml"
+    if not hyperparams.exists() or hyperparams.is_symlink():
         from huggingface_hub import snapshot_download
         snapshot_download(
             repo_id="speechbrain/spkrec-ecapa-voxceleb",
             local_dir=savedir,
-            local_dir_use_symlinks=False,
         )
+    # Vervang symlinks door echte bestanden (Windows symlinks vereisen admin-rechten)
+    for f in savedir_path.rglob("*"):
+        if f.is_symlink():
+            target = f.resolve()
+            if target.is_file():
+                f.unlink()
+                shutil.copy2(str(target), str(f))
     encoder = EncoderClassifier.from_hparams(
         source="speechbrain/spkrec-ecapa-voxceleb",
         savedir=savedir,
