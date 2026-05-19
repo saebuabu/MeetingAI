@@ -78,9 +78,18 @@ def register_speakers(pa, mic_idx, mic_info):
         sys.exit(1)
 
     print("\n[*] Sprekermodel laden (eenmalig downloaden ~80MB)...")
+    savedir = "pretrained_models/spkrec-ecapa-voxceleb"
+    import os
+    if not os.path.exists(os.path.join(savedir, "hyperparams.yaml")):
+        from huggingface_hub import snapshot_download
+        snapshot_download(
+            repo_id="speechbrain/spkrec-ecapa-voxceleb",
+            local_dir=savedir,
+            local_dir_use_symlinks=False,
+        )
     encoder = EncoderClassifier.from_hparams(
         source="speechbrain/spkrec-ecapa-voxceleb",
-        savedir="pretrained_models/spkrec-ecapa-voxceleb",
+        savedir=savedir,
         run_opts={"device": "cuda" if torch.cuda.is_available() else "cpu"},
     )
     print("[+] Model geladen.\n")
